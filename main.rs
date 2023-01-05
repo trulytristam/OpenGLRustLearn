@@ -21,6 +21,7 @@ fn main() {
         .expect("Failed to make context current")
     };
 
+    what the heck
    gl::load_with(|ptr| gl_context.get_proc_address(ptr) as *const _);
 
     event_loop.run(move |event, _, control_flow| {
