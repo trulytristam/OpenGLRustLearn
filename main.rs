@@ -1,40 +1,34 @@
 
 
-use glutin::event_loop::*;
-use glutin::*;
-use glutin::window::*;
-use glutin::event::*;
-
+extern crate glium;
 
 fn main() {
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().with_title("Learn OpenGL with Rust");
+    use glium::{glutin, Surface};
 
-    let gl_context = ContextBuilder::new()
-    .with_gl(GlRequest::Specific(Api::OpenGl, (3, 3)))
-    .build_windowed(window, &event_loop)
-    .expect("Cannot create windowed context");
-    let gl_context = unsafe {
-    gl_context
-        .make_current()
-        .expect("Failed to make context current")
-    };
+    let event_loop = glutin::event_loop::EventLoop::new();
+    let wb = glutin::window::WindowBuilder::new();
+    let cb = glutin::ContextBuilder::new();
+    let display = glium::Display::new(wb, cb, &event_loop).unwrap();
 
-   gl::load_with(|ptr| gl_context.get_proc_address(ptr) as *const _);
+    event_loop.run(move |ev, _, control_flow| {
 
-    event_loop.run(move |event, _, control_flow| {
-    *control_flow = ControlFlow::Wait;
+        let mut target = display.draw();
+        target.clear_color(0.0, 0.0, 1.0, 1.0);
+        target.finish().unwrap();
 
-    match event {
-        Event::LoopDestroyed => (),
-        Event::WindowEvent { event, .. } => match event {
-            WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+        let next_frame_time = std::time::Instant::now() +
+            std::time::Duration::from_nanos(16_666_667);
+
+        *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
+        match ev {
+            glutin::event::Event::WindowEvent { event, .. } => match event {
+                glutin::event::WindowEvent::CloseRequested => {
+                    *control_flow = glutin::event_loop::ControlFlow::Exit;
+                    return;
+                },
+                _ => return,
+            },
             _ => (),
-        },
-        _ => (),
-    }
+        }
     });
-    
-  
-
 }
