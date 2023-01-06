@@ -5,7 +5,7 @@ extern crate glium;
 
 fn main() {
     use glium::{glutin, Surface};
-    let mut event_loop = glutin::event_loop::EventLoop::new();
+    let event_loop = glutin::event_loop::EventLoop::new();
     let wb = glutin::window::WindowBuilder::new();
     let cb = glutin::ContextBuilder::new();
     let display = glium::Display::new(wb,cb,&event_loop).unwrap();
@@ -20,14 +20,29 @@ fn main() {
                             vert{pos: [-1.0,1.0,0.0]},
                             vert{pos: [1.0,1.0,0.0]},
                             vert{pos: [1.0,-1.0,0.0]}];
+
+    let vi: &[u32;6] = &[0,1,2,2,3,0];
+    //define uniform
+    let vertex_buffer = glium::vertex::VertexBuffer::new(&display,vs).unwrap();
+    let index_buffer = glium::index::IndexBuffer::new(&display,glium::index::PrimitiveType::TrianglesList, vi).unwrap();
+    let program = glium::Program::from_source(&display, "vertex_shader.glsl", "fragment_shader.glsl",None);
+    let query = glium::draw_parameters::SamplesPassedQuery::new(&display).unwrap();
+    let params = glium::DrawParameters {
+    depth: glium::Depth {
+        test: glium::DepthTest::IfLess,
+        write: true,
+        .. Default::default()
+    },
+    .. Default::default()
+    };
+    let uniforms = glium::uniform! {
+    };
     
-        
-    let vertex_buffer = glium::vertex::VertexBuffer::new(&display,vs);
     event_loop.run(move |ev, _, control_flow| {
     
             let mut target = display.draw();
             target.clear_color(1.0, 0.0, 1.0, 0.0);
-//            target.draw(vertex_buffer, index_buffer, program, uniforms, draw_parameters);
+            //let catch = target.draw(&vertex_buffer, &index_buffer, &program, &uniforms, &params);
             target.finish().unwrap();
             let next_frame_time = std::time::Instant::now() +
                 std::time::Duration::from_nanos(16_666_667);
