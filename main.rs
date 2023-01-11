@@ -10,7 +10,7 @@ fn main(){
 
     let a = std::time::Instant::now();
     //init cam
-    let camPos = [0f32,0.,-2.]; 
+    let camPos = [0f32,0.,5.]; 
     let camOrien = Matrix3::<f32>::default();
     
     use glium::{glutin, Surface};
@@ -62,13 +62,15 @@ fn main(){
         &fragment_source,
     None).unwrap();
     
-    
+    let test = OM.getObjectOrientations()[0]; 
+    println!("{:?}", test);
     // Main loop
     
         // Draw the triangle
     event_loop.run(move |ev, _, control_flow| {    
 
         let ubP = glium::uniforms::UniformBuffer::new(&display,OM.getObjectPositions()).unwrap();
+        println!("from main: {:?}", OM.getObjectOrientations()[0] );
         let ubO = glium::uniforms::UniformBuffer::new(&display,OM.getObjectOrientations()).unwrap();
         let ws = display.get_framebuffer_dimensions(); 
         let currentTime = std::time::Instant::now().duration_since(a).as_secs_f32();
@@ -79,16 +81,17 @@ fn main(){
             iTime: currentTime, 
             object_count: OM.getLen(),
             positions: &ubP,
-            orientations: &ubO,};
+            orientations: &ubO};
         let mut target = display.draw();
         target.draw(&vertex_buffer, &index_buffer, &program,
                     &uniforms, 
                     &Default::default()).unwrap();
+        // println!("matMain: {:?}", OM.getObjectOrientations()[0]);
         target.finish().unwrap();
         let next_frame_time = std::time::Instant::now() +
                 std::time::Duration::from_nanos(16_666_667);
         // println!("current time: {}", currentTime);
-        OM.update(0.0166666,currentTime);
+        OM.update(0.016666,currentTime);
         *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
         match ev {
             glutin::event::Event::WindowEvent { event, .. } => match event {
