@@ -5,18 +5,22 @@ extern crate glium;
 mod object_manager;
 use std::fs;
 use nalgebra::Vector3;
+use nalgebra::Matrix3;
 fn main(){
 
+    let a = std::time::Instant::now();
+    //init cam
+    let camPos = [0f32,0.,-2.]; 
+    let camOrien = Matrix3::<f32>::default();
+    
     use glium::{glutin, Surface};
-    let OM = object_manager::ObjectManager::new();
+    let mut OM = object_manager::ObjectManager::new();
 
     let event_loop = glutin::event_loop::EventLoop::new();
     let wb = glutin::window::WindowBuilder::new();
     let cb = glutin::ContextBuilder::new();
         // Create a window
     let display = glium::Display::new(wb,cb,&event_loop).unwrap();
-    let ubP = glium::uniforms::UniformBuffer::new(&display,OM.getObjectPositions()).unwrap();
-    let ubO = glium::uniforms::UniformBuffer::new(&display,OM.getObjectOrientations()).unwrap();
 
     // Create a vertex buffer
     let vertex_buffer = {
@@ -57,17 +61,23 @@ fn main(){
         // fragment shader
         &fragment_source,
     None).unwrap();
-    let ws = display.get_framebuffer_dimensions(); 
-    
     
     
     // Main loop
     
         // Draw the triangle
     event_loop.run(move |ev, _, control_flow| {    
+
+        let ubP = glium::uniforms::UniformBuffer::new(&display,OM.getObjectPositions()).unwrap();
+        let ubO = glium::uniforms::UniformBuffer::new(&display,OM.getObjectOrientations()).unwrap();
+        let ws = display.get_framebuffer_dimensions(); 
+        let currentTime = std::time::Instant::now().duration_since(a).as_secs_f32();
         let uniforms = glium::uniform! {
             windowSizeX: ws.0,
             windowSizeY: ws.1,
+            cPos: camPos,
+            iTime: currentTime, 
+            object_count: OM.getLen(),
             positions: &ubP,
             orientations: &ubO,};
         let mut target = display.draw();
@@ -77,6 +87,8 @@ fn main(){
         target.finish().unwrap();
         let next_frame_time = std::time::Instant::now() +
                 std::time::Duration::from_nanos(16_666_667);
+        // println!("current time: {}", currentTime);
+        OM.update(0.0166666,currentTime);
         *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
         match ev {
             glutin::event::Event::WindowEvent { event, .. } => match event {
