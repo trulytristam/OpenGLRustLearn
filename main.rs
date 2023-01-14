@@ -57,6 +57,8 @@ fn main(){
         let ubP = glium::uniforms::UniformBuffer::new(&display,OM.getObjectPositions()).unwrap();
         // println!("from main: {:?}", OM.getObjectOrientations()[0] );
         let ubO = glium::uniforms::UniformBuffer::new(&display,OM.getObjectOrientations()).unwrap();
+        let debugLineColors = glium::uniforms::UniformBuffer::new(&display,OM.debug.getLineColors() ).unwrap();
+        let ubOdim = glium::uniforms::UniformBuffer::new(&display,OM.getObjectDims()).unwrap();
         let currentTime = std::time::Instant::now().duration_since(a).as_secs_f32();
         let ws = display.get_framebuffer_dimensions(); 
         let uniforms = glium::uniform! {
@@ -65,17 +67,20 @@ fn main(){
             cPos: camPos,
             iTime: currentTime, 
             object_count: OM.getLen(),
+            lineColors: &debugLineColors,
             positions: &ubP,
+            dims: &ubOdim,
             orientations: &ubO};
         let mut target = display.draw();
         target.draw(&vertex_buffer, &index_buffer, &program,&uniforms,&Default::default()).unwrap();
-        let (debug_p,debug_v,debug_i) = getDebugProgram(&display,  &mut OM);
+        let (debug_p,debug_v) = getDebugProgram(&display,  &mut OM);
 
         let param = glium::DrawParameters{
             line_width: Some(3.0),
             ..Default::default()
         };
-        target.draw(&debug_v, &debug_i, &debug_p ,&uniforms,&param).unwrap();
+        let indices = glium::index::NoIndices(glium::index::PrimitiveType::LinesList);
+        target.draw(&debug_v, &indices, &debug_p ,&uniforms,&param).unwrap();
         // println!("matMain: {:?}", OM.getObjectOrientations()[0]);
         target.finish().unwrap();
         let next_frame_time = std::time::Instant::now() +
@@ -147,32 +152,37 @@ glium::implement_vertex!(Vertex,position);
 #[derive(Copy, Clone)]
 struct VertexLine {
     position: [f32; 2],
-    width: f32,
+    color: [f32;3],
 }
 // Create a vertex buffer
-glium::implement_vertex!(VertexLine,position,width);
+glium::implement_vertex!(VertexLine,position, color);
 
 
 
 
-fn getDebugProgram(display:& glium::Display, OM: &mut object_manager::ObjectManager)->(glium::Program, glium::VertexBuffer<VertexLine>, glium::IndexBuffer<u16>){
+fn getDebugProgram(display:& glium::Display, OM: &mut object_manager::ObjectManager)->(glium::Program, glium::VertexBuffer<VertexLine>){
     let lines = OM.debug.getlines(OM.screenDim,OM.cam);
+    let linecolors = OM.debug.getLineColors();
+    // println!("{:?}", linecolors);
     let mut debuglines: Vec<VertexLine> = vec![];
     let mut debug_index_data:Vec<u16> = vec![];
     let mut dim = (display.get_framebuffer_dimensions().0 as f32,display.get_framebuffer_dimensions().0 as f32) ; 
     
-    for i in 0..1024{
+    for i in 0..256{
         // debuglines.push(Vertex {position: [lines[i].0,(dim.1/dim.0)*lines[i].1]});  
-        debuglines.push(VertexLine {position: [lines[i].0,lines[i].1], width:12.4});  
+        let j = i*4;
+        debuglines.push(VertexLine {position: [lines[j],lines[j+1]], color: [linecolors[i*3],linecolors[i*3+1],linecolors[i*3+2]]});  
+        debuglines.push(VertexLine {position: [lines[j+2],lines[j+3]], color: [linecolors[i*3],linecolors[i*3+1],linecolors[i*3+2]]});  
         debug_index_data.push(i as u16);
     }
     let debug_vertex_buffer = glium::VertexBuffer::new(display, &debuglines).unwrap(); 
-    let debug_index_buffer = glium::IndexBuffer::new(display,glium::index::PrimitiveType::LinesList,&debug_index_data).unwrap();
+    // let debug_index_buffer = glium::IndexBuffer::new(display,glium::index::PrimitiveType::LinesList,&debug_index_data).unwrap();
+    let debug_index_buffer = glium::index::NoIndices(glium::index::PrimitiveType::LinesList);
     let debugFrag = std::fs::read_to_string("debugFrag.glsl").unwrap();
     let debugVert = std::fs::read_to_string("debugVert.glsl").unwrap();
     let debug_program = glium::Program::from_source(display,&debugVert,&debugFrag,None).unwrap();
 
 
-    (debug_program, debug_vertex_buffer, debug_index_buffer)
+    (debug_program, debug_vertex_buffer)
 
 }
