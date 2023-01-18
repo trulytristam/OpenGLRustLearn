@@ -23,8 +23,8 @@ impl ObjectManager {
         let o: Vec<Object> = vec![];
         let d = GraphicDebug{lines: vec![],lineColors: vec![], dots: vec![]};
         let mut om = ObjectManager{ objects: o,cam: (V3::new(0.,0.,-1.), UnitQuaternion::default()), debug: d, screenDim: (0.,0.)};
-        om.AddObject(V3::new(1.,0.,2.5),BasicShape::Cube([1.,3.,1.0]));
-//        om.AddObject(V3::new(-1.,0.,0.4),BasicShape::Cube([1.,1.2,0.4]));
+        om.AddObject(V3::new(3.,0.,2.5),BasicShape::Cube([1.,3.,1.0]));
+        om.AddObject(V3::new(-1.,0.,0.4),BasicShape::Cube([1.,1.2,0.4]));
         om
     }
     pub fn AddObject(&mut self,p: V3, s: BasicShape){ match s{
@@ -48,18 +48,23 @@ impl ObjectManager {
             o.update(dt, ct);
         }
         //adding lines
-        // self.addDebugLinesForCube(0, V3::new(1.,0.,0.)); 
-        // self.addDebugLinesForCube(1,V3::new(0.,1.,0.)); 
-        
         //
-        
         self.GenerateColliders();
+        self.objects[0].p.x = 1. + ct.sin()*2.; 
+//        println!("{:?}",self.objects[0].collider.data);
+//        let collider = GJK(&self.objects[0], &self.objects[1]);
+        let mut color = V3::new(0.,1.,0.);
+//        if collider {
+//            color = V3::new(1.,0.,0.);
+//        }
+        self.addDebugLinesForCube(0, color); 
+        self.addDebugLinesForCube(1,color); 
         let o = V3::new(0.,0.,0.);
         let a = self.objects[0].localtoglobal(self.objects[0].data[0]); 
         let b = self.objects[0].localtoglobal(self.objects[0].data[2]); 
         let d = self.objects[0].localtoglobal(self.objects[0].data[3]); 
         let c = self.objects[0].localtoglobal(self.objects[0].data[6]); 
-        let e = simplex_closest(a, b, c, d);
+        let e = simplex_closest(&a, &b, &c, &d).0;
         self.debug.addline(a,b,V3::new(0.,1.,0.));
         self.debug.addline(b,c,V3::new(0.,1.,0.));
         self.debug.addline(c,a,V3::new(0.,1.,0.));

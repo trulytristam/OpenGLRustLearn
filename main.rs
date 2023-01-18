@@ -29,8 +29,6 @@ fn main(){
                 Vertex { position: [-1.0, -1.0] },
                 Vertex { position: [ 1.0, -1.0] },
                 Vertex { position: [ 1.0,  1.0] },
-
-
             ]
         ).unwrap()
     };
