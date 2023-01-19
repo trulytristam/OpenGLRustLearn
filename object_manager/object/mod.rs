@@ -69,7 +69,7 @@ impl Object {
                 temp.m = 500.;
                 let mut rng = rand::thread_rng();
                 let mut rd= ||{rng.gen_range(-1.0f32..1.0)};
-                temp.a = Vector3::new(1.,0.001,0.).normalize()*4.;
+                temp.a = Vector3::new(1.,0.4,0.).normalize()*4.;
                 // temp.a = Vector4::new(0.,1.,0.,0.4).normalize();
                 temp.dim = dim;
                 let dir:[f32;2] = [0.5,-0.5];
@@ -102,9 +102,6 @@ impl Object {
 
         self.old_o = self.o;
         self.a += self.ii_t * (self.t_ext - (self.a.cross(&(self.i_t*self.a))))* h; 
-        let q1 = self.o.normalize();
-        let q2 = h*0.5*Quaternion::new(self.a.x, self.a.y, self.a.z, 0.);
-        let q3 = q1 + q2*q1;
 //        self.o = UnitQuaternion::new_normalize(q3); 
         
         let axisn = UnitVector3::new_normalize(self.a); 
@@ -115,8 +112,10 @@ impl Object {
     pub fn update_velocities(&mut self, h: f32){
         self.v = (self.p - self.old_p)/h;
         let dq = self.o * self.old_o.inverse(); 
-        self.a = 2.* V3::new(dq.i,dq.j,dq.k) /h;      
-//        self.a = if dq.w >=0. {self.a}else{-self.a};
+        let (axis,angle) = dq.axis_angle().unwrap(); 
+
+        self.a = 2.*axis.normalize() *angle /h;      
+        self.a = if dq.w >=0. {self.a}else{-self.a};
 
 
     }
