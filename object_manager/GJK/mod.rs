@@ -1,10 +1,9 @@
-use nalgebra::*;
+use nalgebra::Vector3;
 use rand::Rng;
-
 use super::object::Object;
 type V3 = Vector3<f32>;
 
-
+#[derive(Clone)]
 pub struct Collider {
     pub data: Vec<V3>,
 }
@@ -12,7 +11,7 @@ fn clamp(x:f32,a:f32,b:f32)->f32{
     f32::min(b,f32::max(a,x))
 }
 impl Collider {
-    fn getSupport(&self, dir: V3)-> V3{
+    pub fn get_support(&self, dir: V3)-> V3{
         let mut out = V3::default();
         let mut maxv = -std::f32::MAX;
         for p in self.data.iter(){
@@ -24,49 +23,58 @@ impl Collider {
         } 
         out
     }
-
-    fn getCSOSupport(&self, other: &Self, dir: V3)-> V3{
-        let a = self.getSupport(dir); 
-        let b = other.getSupport(-dir);
+    fn get_cso_support(&self, other: &Self, dir: V3)-> V3{
+        let a = self.get_support(dir); 
+        let b = other.get_support(-dir);
         a-b
     }
 }
 #[derive (Debug)]
-enum Simplex{
+pub enum Simplex{
     One(V3),
     Two(V3,V3),
     Thr(V3,V3,V3),
     Fou(V3,V3,V3,V3),
 }
-pub enum sType {
-    vert(V3),
-    line(V3,V3),
-    face(V3,V3,V3),
-}
 
-fn line_closest(p:& V3, d: V3, dn: V3)->(V3,sType){
+#[derive (Debug)]
+pub enum SType {
+    Vert(V3),
+    Line(V3,V3),
+    Face(V3,V3,V3),
+}
+impl SType{
+    pub fn to_simplex(&self)->Simplex{
+        match self {
+            SType::Vert(p) => Simplex::One(p.clone()),
+            SType::Line(p,p1) => Simplex::Two(p.clone(),p1.clone()),
+            SType::Face(p,p1,p2) => Simplex::Thr(p.clone(),p1.clone(),p2.clone()),
+        }
+    }
+}
+fn line_closest(p:& V3, d: V3, dn: V3)->(V3,SType){
     let dist = -p.dot(&dn);
     let dlen = d.norm();
     let distc = clamp(dist, 0., dlen);
     let areas = (dist < 0., dist > dlen);
     let a = p; 
     let b = p + dlen*dn;
-    let pout = (p + distc*dn);
+    let pout = p + distc*dn;
     match areas {
-        (false,false) => (pout,sType::line(a.clone(), b.clone())),
-        (true,false) => (a.clone(),sType::vert(a.clone())),
-        (false,true) => (b,sType::vert(b)),
+        (false,false) => (pout,SType::Line(a.clone(), b.clone())),
+        (true,false) => (a.clone(),SType::Vert(a.clone())),
+        (false,true) => (b,SType::Vert(b)),
         (true,true) => {
             println!("{:?}","from Gjk line_closes");
-            (p.clone(),sType::vert(a.clone()))
+            (p.clone(),SType::Vert(a.clone()))
         },
     }
 }
-pub fn triangle_closest(i:& V3, j:& V3, k:& V3)->(V3,sType){
+pub fn triangle_closest(i:& V3, j:& V3, k:& V3)->(V3,SType){
     let ij = j-i;
     let jk = k-j;
     let ki = i-k;
-    
+
     let ijn = ij.normalize();
     let jkn = jk.normalize();
     let kin = ki.normalize();
@@ -75,30 +83,30 @@ pub fn triangle_closest(i:& V3, j:& V3, k:& V3)->(V3,sType){
     let ivn = ijn.cross(&normal).normalize();
     let jvn = jkn.cross(&normal).normalize();
     let kvn = kin.cross(&normal).normalize();
-    
+
     let kdist = jk.dot(&ivn);
     let area = ij.norm() * kdist/2.;
 
     let mut a = -ivn.dot(&i);
     let mut b = -jvn.dot(&j);
     let mut c = -kvn.dot(&k);
-    
-    
+
+
     let mut u = a * ij.norm()/2./area;
     let mut v = b * jk.norm()/2./area;
     let mut w = 1.-u-v;
 
     let areas = (a < 0.,b < 0.,c < 0.);
-    
+
     match areas {
         (true,true,true) => {
-            (v*i + w*j + u*k, sType::face(i.clone(),j.clone(),k.clone()))
+            (v*i + w*j + u*k, SType::Face(i.clone(),j.clone(),k.clone()))
         },
         (true,true,false) => {
             line_closest(k, ki,kin)
         },
         (true,false,false) => {
-            (k.clone(), sType::vert(k.clone()))
+            (k.clone(), SType::Vert(k.clone()))
         },
         (true,false,true) => {
             line_closest(j, jk,jkn)
@@ -107,50 +115,48 @@ pub fn triangle_closest(i:& V3, j:& V3, k:& V3)->(V3,sType){
             line_closest(i, ij, ijn)
         },
         (false,true,false) => {
-            (i.clone(), sType::vert(i.clone()))
+            (i.clone(), SType::Vert(i.clone()))
         },
         (false,false,false) => {
-            (j.clone(), sType::vert(j.clone()))
+            (j.clone(), SType::Vert(j.clone()))
         },
         (false,false,true) => {
-            (j.clone(), sType::vert(j.clone()))
+            (j.clone(), SType::Vert(j.clone()))
         },
     }
-     
+
 }
 fn order3dsimplex(a: & V3,b: & V3,c: & V3,d: & V3, ab: V3, ac: V3)-> (V3,V3,V3,V3){
     let insidep = a*0.25 + b*0.25 + c*0.25 + d*0.25;
-    if (insidep - a).dot(&ac.cross(&ab)) < 0. {
-        return (a.clone(),b.clone(),c.clone(),d.clone());
+    if (insidep - a).dot(&ac.cross(&ab)) > 0. {
+        return (b.clone(),a.clone(),c.clone(),d.clone());
     }
     (a.clone(),b.clone(),c.clone(),d.clone())
 }
 
-pub fn simplex_closest(ai:& V3, bi:& V3, ci:& V3, di:& V3) -> (V3,sType) {
-    let (a,b,c,d) = order3dsimplex(ai,bi,ci,di,(bi-ai),(ci-ai));
-    
+pub fn simplex_closest(ai:& V3, bi:& V3, ci:& V3, di:& V3) -> (V3,SType) {
+    let (a,b,c,d) = order3dsimplex(ai,bi,ci,di,bi-ai,ci-ai);
+
     let ab = b-a;
     let ac = c-a;
     let ad = d-a;
     let bc = c-b;
     let bd = d-b; 
-    
-
 
     let abn = ac.cross(&ab).normalize();
     let acn = ad.cross(&ac).normalize();
     let adn = ab.cross(&ad).normalize();
     let bdn = bc.cross(&bd).normalize();
-    
+
     let a_s = abn.dot(&a);
     let b_s = acn.dot(&a);
     let c_s = adn.dot(&a);
     let d_s = bdn.dot(&d);
 
     let areas = (a_s > 0., b_s > 0., c_s >0., d_s > 0.);
-//    println!("areas from gjk: {:?}",areas);
+    //    println!("areas from gjk: {:?}",areas);
     match areas {
-        (true,true,true,true)  => {(V3::new(0.,0.,0.),sType::vert(V3::new(0.,0.,0.)))},
+        (true,true,true,true)  => {(V3::new(0.,0.,0.),SType::Vert(V3::new(0.,0.,0.)))},
         (true,true,true,false) => {triangle_closest(&b,&c,&d)},
         (true,true,false,true) => {triangle_closest(&a,&d,&b)},
         (true,false,true,true) => {triangle_closest(&a,&c,&d)},
@@ -161,55 +167,60 @@ pub fn simplex_closest(ai:& V3, bi:& V3, ci:& V3, di:& V3) -> (V3,sType) {
             line_closest(&b, p, p.normalize())
         },
         (true,false,false,true) => {
-            let p = (d-a);
+            let p = d-a;
             line_closest(&a, p, p.normalize())
-         },
+        },
         (false,false,true,true) => {
-            let p = (c-a);
+            let p = c-a;
             line_closest(&a, p, p.normalize())
-         },
+        },
         (false,true,false,true) => {
-            let p = (b-a);
+            let p = b-a;
             line_closest(&a, p, p.normalize())
-         },
+        },
         (true,false,true,false) => {
-            let p = (d-c);
+            let p = d-c;
             line_closest(&c, p, p.normalize())
         },
         (false,true,true,false) => {
-            let p = (b-c);
+            let p = b-c;
             line_closest(&c, p, p.normalize())
         },
 
-        (true,false,false,false) => {(d.clone(),sType::vert(d.clone()))},
-        (false,true,false,false) => {(b.clone(),sType::vert(b.clone()))},
-        (false,false,true,false) => {(c.clone(),sType::vert(c.clone()))},
-        (false,false,false,true) => {(a.clone(),sType::vert(a.clone()))},
+        (true,false,false,false) => {(d.clone(),SType::Vert(d.clone()))},
+        (false,true,false,false) => {(b.clone(),SType::Vert(b.clone()))},
+        (false,false,true,false) => {(c.clone(),SType::Vert(c.clone()))},
+        (false,false,false,true) => {(a.clone(),SType::Vert(a.clone()))},
 
-        (false,false,false,false) => {(a.clone(),sType::vert(a.clone()))},
+        (false,false,false,false) => {(a.clone(),SType::Vert(a.clone()))},
     }
 }
 
 impl Simplex {
-    pub fn Add(& self, sup: V3)-> Simplex{
+    fn add(& self, sup: V3)-> Option<Simplex>{
         match self {
-            Simplex::One(p) =>        {Simplex::Two(p.clone(),sup)},    
-            Simplex::Two(p,p2)=>      {Simplex::Thr(p.clone(),p2.clone(),sup)},    
-            Simplex::Thr(p,p2,p3)=>   {Simplex::Fou(p.clone(),p2.clone(), p3.clone(), sup)},    
+            Simplex::One(p) =>        {Some(Simplex::Two(p.clone(),sup))},    
+            Simplex::Two(p,p2)=>      {Some(Simplex::Thr(p.clone(),p2.clone(),sup))},    
+            Simplex::Thr(p,p2,p3)=>   {Some(Simplex::Fou(p.clone(),p2.clone(), p3.clone(), sup))},    
             Simplex::Fou(p,p2,p3,p4)=>{
-                println!("{:?}","from simplex add from gjk, should be inacessible");
-                Simplex::Fou(p.clone(),p2.clone(),p3.clone(),p4.clone())},    
+                None
+            }
         }
     }
-    fn Reduce(vs: & Vec<V3>, p: V3, dir: V3)->Simplex{
+    fn reduce(vs: & Vec<V3>, p: V3, dir: V3)->Simplex{
         let mut vout: Vec<V3> = vec![];
+        let mut acc = 0;
         for v in vs.iter(){
             let vec = v-p;
-            if vec.dot(&(-dir)) < 0.01 {
+            if vec.dot(&dir) < 0.0 {
                 vout.push(v.clone());
+            }
+            else{
+                acc+=1;
             }
 
         }
+        println!("removed count: {:?}",acc);
         match vout.len() {
             0 => Simplex::One(p.clone()),
             1 => Simplex::One(vout[0]),
@@ -222,11 +233,16 @@ impl Simplex {
             },
         }
     }
-    fn Closest(&self)->(V3,sType){
+    fn reduce_2(t: SType)->Simplex{
+        t.to_simplex()
+    }
+    pub fn closest(&self)->(V3,SType){
         match self {
-            Simplex::One(p)=> {(p.clone(),sType::vert(p.clone()))},
+            Simplex::One(p)=> {
+                (p.clone(),SType::Vert(p.clone()))
+            },
             Simplex::Two(p, p2)=> {
-                let ab = (p2-p);
+                let ab = p2-p;
                 let abn = ab.normalize();
                 line_closest(p, ab, abn)
             },
@@ -238,7 +254,7 @@ impl Simplex {
             }
         }
     }
-    fn toVec(&self)-> Vec<V3> {
+    fn to_vec(&self)-> Vec<V3> {
         match self {
             Simplex::One(p) => vec![p.clone()],
             Simplex::Two(p,p2) => vec![p.clone(),p2.clone()],
@@ -255,37 +271,56 @@ impl Simplex {
         }
     }
 } 
-pub fn GJK(a:& Object, b:& Object)->bool{
+pub fn gjk(a:& Object, b:& Object)->bool{
     let mut rng = rand::thread_rng();
     let mut rd= || {rng.gen_range(-1.0f32..1.0)};
     let dir = V3::new(rd(),rd(),rd()).normalize();
-    let mut sup = a.collider.getCSOSupport(&b.collider, dir);
+    let mut sup = a.collider.get_cso_support(&b.collider, dir);
     let mut simp = Simplex::One(sup);
     let mut n_iter = 0;
     loop {
         //4
-        let c = simp.Closest();
+        let c = simp.closest();
         let dist_from_origin = c.0.norm(); 
-        println!("{:?}",dist_from_origin);
         //5
-        if dist_from_origin <0.01 {
+        if dist_from_origin <0.1 {
             println!("return true after {:?} {}", n_iter, " iterations");
             return true;
         }
+        println!("closest: {:?}", c.0);
+        println!("dist from origin: {:?}",dist_from_origin);
+        println!("sType: {:?}", c.1);
 
-        println!("count from gjk function {:?} iter: {}",simp.count(), n_iter);
         //6
         let newdir = -c.0.normalize(); 
-        simp = Simplex::Reduce(&simp.toVec(), c.0,newdir );
+        println!("direction: {:?}",newdir);
+
+//        simp = Simplex::Reduce2(&simp.toVec(), c.0,-newdir );
+        simp = Simplex::reduce_2(c.1);
 
         //7
-        sup = a.collider.getCSOSupport(&b.collider, newdir );
-        //        println!("{:?}",simp);
+        println!("simplex before: {:?}", simp);
+        sup = a.collider.get_cso_support(&b.collider, newdir );
 
-        simp = simp.Add(sup);
-        if sup.dot(&newdir) <= c.0.dot(&newdir) {
+        println!("simplex after: {:?}", simp);
+
+        println!("closest: {:?} newsup: {}", c.0, sup);
+
+        if sup.dot(&newdir) <  0.100{
             println!("false from gjk func after {:?} {}", n_iter, " iteration");
             return false;
+        }
+        let newsimp = simp.add(sup);
+
+        match newsimp {
+            Some(s) => {simp = s;},
+            None => {panic!("Tried to add to a full simplex");},
+        };
+        println!("simplex after add: {:?}", simp);
+        println!("new sup dist: {:?}", sup.dot(&newdir));
+
+        if n_iter > 400 {
+            panic!("GJK stuck");
         }
         n_iter += 1;
     }

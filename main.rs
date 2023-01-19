@@ -2,18 +2,16 @@ extern crate nalgebra;
 extern crate glium;
 use glium::Surface;
 mod object_manager;
-use std::fs;
 use nalgebra::Vector3;
 use nalgebra::Matrix3;
 fn main(){
-
     let a = std::time::Instant::now();
     //init cam
-    let camPos = [0f32,0.,0.]; 
-    let camOrien = Matrix3::<f32>::default();
+    let cam_pos = [0f32,0.,0.]; 
+    let cam_ori = Matrix3::<f32>::default();
     
     //use glium::{glutin, Surface};
-    let mut OM = object_manager::ObjectManager::new();
+    let mut om = object_manager::ObjectManager::new();
 
     let event_loop = glutin::event_loop::EventLoop::new();
     let wb = glutin::window::WindowBuilder::new();
@@ -46,32 +44,32 @@ fn main(){
     let program = glium::Program::from_source(&display,&vertex_source,&fragment_source,None).unwrap();
     
     
-    let test = OM.getObjectOrientations()[0]; 
+    let test = om.get_object_orientations()[0]; 
     // println!("{:?}", test);
     // Main loop
     
         // Draw the triangle
     event_loop.run(move |ev, _, control_flow| {    
-        let ubPos = glium::uniforms::UniformBuffer::new(&display,OM.getObjectPositions()).unwrap();
+        let ub_pos = glium::uniforms::UniformBuffer::new(&display,om.get_object_position()).unwrap();
         // println!("from main: {:?}", OM.getObjectOrientations()[0] );
-        let ubO = glium::uniforms::UniformBuffer::new(&display,OM.getObjectOrientations()).unwrap();
-        let debugLineColors = glium::uniforms::UniformBuffer::new(&display,OM.debug.getLineColors() ).unwrap();
-        let ubOdim = glium::uniforms::UniformBuffer::new(&display,OM.getObjectDims()).unwrap();
-        let currentTime = std::time::Instant::now().duration_since(a).as_secs_f32();
+        let ub_o = glium::uniforms::UniformBuffer::new(&display,om.get_object_orientations()).unwrap();
+        let debug_line_colors = glium::uniforms::UniformBuffer::new(&display,om.debug.getLineColors() ).unwrap();
+        let ub_o_dim = glium::uniforms::UniformBuffer::new(&display,om.get_object_dims()).unwrap();
+        let current_time = std::time::Instant::now().duration_since(a).as_secs_f32();
         let ws = display.get_framebuffer_dimensions(); 
         let uniforms = glium::uniform! {
             windowSizeX: ws.0,
             windowSizeY: ws.1,
-            cPos: camPos,
-            iTime: currentTime, 
-            object_count: OM.getLen(),
-            lineColors: &debugLineColors,
-            positions: &ubPos,
-            dims: &ubOdim,
-            orientations: &ubO};
+            cPos: cam_pos,
+            iTime: current_time, 
+            object_count: om.get_len(),
+            lineColors: &debug_line_colors,
+            positions: &ub_pos,
+            dims: &ub_o_dim,
+            orientations: &ub_o};
         let mut target = display.draw();
         target.draw(&vertex_buffer, &index_buffer, &program,&uniforms,&Default::default()).unwrap();
-        let (debug_p,debug_v) = getDebugProgram(&display,  &mut OM);
+        let (debug_p,debug_v) = get_debug_program(&display,  &mut om);
 
         let param = glium::DrawParameters{
             line_width: Some(3.0),
@@ -84,14 +82,15 @@ fn main(){
         let next_frame_time = std::time::Instant::now() +
                 std::time::Duration::from_nanos(16_666_667);
         // println!("current time: {}", currentTime);
-        OM.update(0.016666,currentTime,(ws.0 as f32, ws.1 as f32));
+        om.update(0.016666,current_time,(ws.0 as f32, ws.1 as f32));
+
     
         // println!("line #: {:?}", OM.debug.lines[0]);
         *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
         // println!("len: {:?}", OM.getLen());
        
         match ev {
-            glutin::event::Event::WindowEvent { event, .. } => {process_input(&mut OM, &event);
+            glutin::event::Event::WindowEvent { event, .. } => {process_input(&mut om, &event);
                 match event {
                     glutin::event::WindowEvent::CloseRequested => {
                         *control_flow = glutin::event_loop::ControlFlow::Exit;
@@ -109,7 +108,7 @@ fn main(){
 }
 
 use glium::glutin;
-fn process_input(OM: &mut object_manager::ObjectManager, event: &glutin::event::WindowEvent<'_>){
+fn process_input(om: &mut object_manager::ObjectManager, event: &glutin::event::WindowEvent<'_>){
     let input = match *event {
         glutin::event::WindowEvent::KeyboardInput {input, ..} => input,
         _ => return,
@@ -121,15 +120,15 @@ fn process_input(OM: &mut object_manager::ObjectManager, event: &glutin::event::
     };
     let speed = 5.5f32;
     let aspeed = 3.5f32;
-    let forward =OM.cam.1* Vector3::<f32>::new(0.,0.,1.);
-    let right =OM.cam.1* Vector3::<f32>::new(1.,0.,0.);
+    let forward =om.cam.1* Vector3::<f32>::new(0.,0.,1.);
+    let right =om.cam.1* Vector3::<f32>::new(1.,0.,0.);
     match key {
-        glutin::event::VirtualKeyCode::A => OM.cam.0 -= right*speed*0.016666, 
-        glutin::event::VirtualKeyCode::D => OM.cam.0 += right*speed*0.016666, 
-        glutin::event::VirtualKeyCode::W => OM.cam.0 += forward*speed*0.016666, 
-        glutin::event::VirtualKeyCode::S => OM.cam.0 -= forward*speed*0.016666,  
-        glutin::event::VirtualKeyCode::Left => OM.cam.1 *= nalgebra::UnitQuaternion::<f32>::new(Vector3::<f32>::new(0.,1.,0.)*-aspeed*0.016666), 
-        glutin::event::VirtualKeyCode::Right=> OM.cam.1 *= nalgebra::UnitQuaternion::<f32>::new(Vector3::<f32>::new(0.,1.,0.)*aspeed*0.016666), 
+        glutin::event::VirtualKeyCode::A => om.cam.0 -= right*speed*0.016666, 
+        glutin::event::VirtualKeyCode::D => om.cam.0 += right*speed*0.016666, 
+        glutin::event::VirtualKeyCode::W => om.cam.0 += forward*speed*0.016666, 
+        glutin::event::VirtualKeyCode::S => om.cam.0 -= forward*speed*0.016666,  
+        glutin::event::VirtualKeyCode::Left => om.cam.1 *= nalgebra::UnitQuaternion::<f32>::new(Vector3::<f32>::new(0.,1.,0.)*-aspeed*0.016666), 
+        glutin::event::VirtualKeyCode::Right=> om.cam.1 *= nalgebra::UnitQuaternion::<f32>::new(Vector3::<f32>::new(0.,1.,0.)*aspeed*0.016666), 
         _ => (),
     };
 
@@ -155,9 +154,9 @@ glium::implement_vertex!(VertexLine,position, color);
 
 
 
-fn getDebugProgram(display:& glium::Display, OM: &mut object_manager::ObjectManager)->(glium::Program, glium::VertexBuffer<VertexLine>){
-    let lines = OM.debug.getlines(OM.screenDim,OM.cam);
-    let linecolors = OM.debug.getLineColors();
+fn get_debug_program(display:& glium::Display, om: &mut object_manager::ObjectManager)->(glium::Program, glium::VertexBuffer<VertexLine>){
+    let lines = om.debug.getlines(om.screen_dim,om.cam);
+    let linecolors = om.debug.getLineColors();
     // println!("{:?}", linecolors);
     let mut debuglines: Vec<VertexLine> = vec![];
     let mut debug_index_data:Vec<u16> = vec![];
@@ -172,9 +171,9 @@ fn getDebugProgram(display:& glium::Display, OM: &mut object_manager::ObjectMana
     }
     let debug_vertex_buffer = glium::VertexBuffer::new(display, &debuglines).unwrap(); 
     // let debug_index_buffer = glium::IndexBuffer::new(display,glium::index::PrimitiveType::LinesList,&debug_index_data).unwrap();
-    let debugFrag = std::fs::read_to_string("debugFrag.glsl").unwrap();
-    let debugVert = std::fs::read_to_string("debugVert.glsl").unwrap();
-    let debug_program = glium::Program::from_source(display,&debugVert,&debugFrag,None).unwrap();
+    let debug_frag = std::fs::read_to_string("debugFrag.glsl").unwrap();
+    let debug_vert = std::fs::read_to_string("debugVert.glsl").unwrap();
+    let debug_program = glium::Program::from_source(display,&debug_vert,&debug_frag,None).unwrap();
 
 
     (debug_program, debug_vertex_buffer)
