@@ -1,21 +1,21 @@
 use super::object::*;
 extern crate nalgebra;
 use nalgebra::*;
-type V3 = Vector3<f32>; 
+type V3 = Vector3<f64>; 
 pub struct ConstraintDesc {
     pub apoint: V3,
     pub bpoint: V3,
-    pub compliance: f32,
-    pub dist: f32,
+    pub compliance: f64,
+    pub dist: f64,
 }
 struct Constraint{
     a: u32,
     b: u32,
     c_desc: ConstraintDesc,
-    lagrange: f32,
+    lagrange: f64,
 }
 impl Constraint {
-    fn solve_constraint(&mut self, objects: &mut Vec<Object>, dt:f32){
+    fn solve_constraint(&mut self, objects: &mut Vec<Object>, dt:f64){
         let o1: Object = objects[(self.a as usize)].clone(); 
         let o2: Object = objects[(self.b as usize)].clone(); 
         let r1_global = o1.localtoglobal(self.c_desc.apoint);
@@ -47,7 +47,6 @@ impl Constraint {
         objects[(self.a as usize)].o *=  nalgebra::UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(aq),aq.norm());
         objects[(self.b as usize)].o *= nalgebra::UnitQuaternion::from_axis_angle(&UnitVector3::new_normalize(bq),bq.norm());
 
-        
         self.lagrange += dy;
     }
     fn initialize(&mut self){
@@ -63,10 +62,10 @@ impl PhysicsManager {
     pub fn new()-> Self{
         PhysicsManager { constraints: vec![]}
     }
-    pub fn update_physics(&mut self, objects: &mut Vec<Object>, dt: f32,ct: f32){
+    pub fn update_physics(&mut self, objects: &mut Vec<Object>, dt: f64,ct: f64){
         let n_sub = 20;
         self.init_contraints();
-        let h = dt/(n_sub as f32);
+        let h = dt/(n_sub as f64);
         for _ in 0..n_sub{
             for o in objects.iter_mut(){
                 o.generate_collider();
@@ -87,7 +86,7 @@ impl PhysicsManager {
         let c = Constraint {a:ai, b:bi, c_desc: desc, lagrange: 0.};
         self.constraints.push(c);
     }
-    fn solve_positions(&mut self, objects: &mut Vec<Object>,h: f32){
+    fn solve_positions(&mut self, objects: &mut Vec<Object>,h: f64){
         for c in self.constraints.iter_mut() {
             c.solve_constraint(objects, h);
         }

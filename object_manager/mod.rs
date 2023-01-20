@@ -10,10 +10,10 @@ use physics_manager::*;
 use object::BasicShape;
 use physics_manager::*;
 use graphic_debug::GraphicDebug;
-type V3 = Vector3<f32>;
+type V3 = Vector3<f64>;
 pub struct ObjectManager {
-    pub screen_dim: (f32,f32),
-    pub cam: (V3,UnitQuaternion<f32>),
+    pub screen_dim: (f64,f64),
+    pub cam: (V3,UnitQuaternion<f64>),
     pub debug: GraphicDebug, 
     objects: Vec<Object>,
     physics_manager: PhysicsManager,
@@ -22,7 +22,7 @@ pub struct ObjectManager {
 impl ObjectManager {
     pub fn new()-> Self{
         let o: Vec<Object> = vec![];
-        let d = GraphicDebug{lines: vec![],lineColors: vec![], dots: vec![]};
+        let d = GraphicDebug{lines: vec![],line_colors: vec![], dots: vec![]};
         let mut om = ObjectManager{physics_manager: PhysicsManager::new(), objects: o,cam: (V3::new(0.,0.,-1.), UnitQuaternion::default()), debug: d, screen_dim: (0.,0.)};
 //        om.add_object(V3::new(1.0,0.,3.5),BasicShape::Cube([1.,3.,1.0]));
         om.add_object(V3::new(0.0,0.,3.5),BasicShape::Cube([3.,1.2,0.2]));
@@ -47,7 +47,7 @@ impl ObjectManager {
     pub fn get_len(&self) -> f32{
         self.objects.len() as f32
     }
-    pub fn update(&mut self, dt: f32, ct: f32, dim: (f32,f32)){
+    pub fn update(&mut self, dt: f64, ct: f64, dim: (f64,f64)){
         self.screen_dim = dim;
         self.debug.clear();
         self.physics_manager.update_physics(&mut self.objects, dt,ct);
@@ -72,7 +72,7 @@ impl ObjectManager {
                 self.objects[id].collider.data[5],
                 self.objects[id].collider.data[4],
             ];
-            self.debug.addSetOf3DPoints_asConnectedLines(out, color); 
+            self.debug.add_set_of_points_as_connected_lines(out, color); 
             self.debug.addline(self.objects[id].collider.data[2],self.objects[id].collider.data[6], color);
             self.debug.addline(self.objects[id].collider.data[3],self.objects[id].collider.data[7], color);
             self.debug.addline(self.objects[id].collider.data[1],self.objects[id].collider.data[5], color);
@@ -81,18 +81,18 @@ impl ObjectManager {
         let mut vp  = [0.;1024]; 
         for oi in 0..self.objects.len(){
             let o = self.cam.1.inverse() * (&self.objects[oi].p- self.cam.0);
-            vp[oi*3]= o.x;
-            vp[oi*3+1]= o.y;
-            vp[oi*3+2]= o.z;
+            vp[oi*3]= o.x as f32;
+            vp[oi*3+1]= o.y as f32;
+            vp[oi*3+2]= o.z as f32;
         }   
         vp
     }
     pub fn get_object_dims(&self)->[f32;1024]{
         let mut vp = [0.;1024];
         for oi in 0..self.objects.len(){
-            vp[oi*3] = self.objects[oi].dim[0];
-            vp[oi*3+1] = self.objects[oi].dim[1];
-            vp[oi*3+2] = self.objects[oi].dim[2];
+            vp[oi*3] = self.objects[oi].dim[0] as f32;
+            vp[oi*3+1] = self.objects[oi].dim[1] as f32;
+            vp[oi*3+2] = self.objects[oi].dim[2] as f32;
         }
         vp
     }
@@ -103,7 +103,7 @@ impl ObjectManager {
             let or =(self.cam.1.inverse() * o.o).to_rotation_matrix();
             for j in 0..3{
                 for k in 0..3{
-                    vpout[i*9+(j*3+k)]= or[(j,k)]; 
+                    vpout[i*9+(j*3+k)]= or[(j,k)] as f32; 
                 }
             }
             i+=1;

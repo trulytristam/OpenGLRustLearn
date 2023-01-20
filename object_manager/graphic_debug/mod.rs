@@ -1,14 +1,14 @@
 extern crate nalgebra;
 use nalgebra::*;
 pub struct GraphicDebug {
-    pub lines: Vec<(Vector3<f32>,Vector3<f32>)>,
-    pub lineColors: Vec<Vector3<f32>>,
-    pub dots: Vec<Vector3<f32>>,
+    pub lines: Vec<(Vector3<f64>,Vector3<f64>)>,
+    pub line_colors: Vec<Vector3<f64>>,
+    pub dots: Vec<Vector3<f64>>,
 }
 
-fn planeinter(p: Vector3<f32> , zplane: f32)->Option<Vector3<f32>>{
+fn planeinter(p: Vector3<f64> , zplane: f64)->Option<Vector3<f64>>{
     let rd = p.normalize();
-    let r = 1./rd.dot(&Vector3::<f32>::new(0.,0.,1.)); 
+    let r = 1./rd.dot(&Vector3::<f64>::new(0.,0.,1.)); 
     if r > 0. {
         return Some(rd * zplane * r);
     }
@@ -17,60 +17,58 @@ fn planeinter(p: Vector3<f32> , zplane: f32)->Option<Vector3<f32>>{
 impl GraphicDebug {
     pub fn clear(&mut self){
         self.lines.clear();
-        self.lineColors.clear();
+        self.line_colors.clear();
         self.dots.clear();
     }
-    pub fn getlines(&self, dim: (f32,f32), cam: (Vector3<f32>, UnitQuaternion<f32>))-> [f32;1024]{
+    pub fn getlines(&self, dim: (f64,f64), cam: (Vector3<f64>, UnitQuaternion<f64>))-> [f64;1024]{
         let mut out = [ 0.;1024];
         let mut j =0;
-        let mut i = 0;
         for L in self.lines.iter(){
-            let Lm0 = cam.1.inverse() * (L.0 - cam.0); 
-            let Lm1 = cam.1.inverse() * (L.1 - cam.0); 
-            let L2 = planeinter(Lm0, 0.7); 
-            let L3 = planeinter(Lm1, 0.7);
+            let lm0 = cam.1.inverse() * (L.0 - cam.0); 
+            let lm1 = cam.1.inverse() * (L.1 - cam.0); 
+            let l2 = planeinter(lm0, 0.7); 
+            let l3 = planeinter(lm1, 0.7);
             
-            if !(L2.is_none()||L3.is_none()){
-                out[j] = L2.unwrap().x;
-                out[j+1] = L2.unwrap().y * (dim.0/dim.1);
-                out[j+2] = L3.unwrap().x;
-                out[j+3] = L3.unwrap().y* (dim.0/dim.1);
+            if !(l2.is_none()||l3.is_none()){
+                out[j] = l2.unwrap().x;
+                out[j+1] = l2.unwrap().y * (dim.0/dim.1);
+                out[j+2] = l3.unwrap().x;
+                out[j+3] = l3.unwrap().y* (dim.0/dim.1);
                 j+=4;
             }
-            i+=1;
         }
         out
     }
-    pub fn getLineColors(&self)->[f32;1024]{
+    pub fn get_line_colors(&self)->[f32;1024]{
         let mut out = [0.;1024];
         let mut i = 0;
         // /rintln!("{:?}", self.lineColors.len());
-        for l in self.lineColors.iter(){
-            out[i] = l.x;
-            out[i+1] = l.y;
-            out[i+2] = l.z;
+        for l in self.line_colors.iter(){
+            out[i] = l.x as f32;
+            out[i+1] = l.y as f32;
+            out[i+2] = l.z as f32;
             i+=3;
         } 
         out
     }
-    pub fn getpoints(&self)-> [f32;1024]{
+    pub fn getpoints(&self)-> [f64;1024]{
         let out = [0.;1024];
         for P in self.dots.iter(){
 
         }
         out
     }
-    pub fn addline(&mut self, a: Vector3<f32>, b: Vector3<f32>, color: Vector3<f32>){
-        self.lineColors.push(color);
+    pub fn addline(&mut self, a: Vector3<f64>, b: Vector3<f64>, color: Vector3<f64>){
+        self.line_colors.push(color);
         self.lines.push((a,b));
        
     }
-    pub fn addSetOf3DPoints_asConnectedLines(&mut self, p: Vec<Vector3<f32>>, color: Vector3<f32>){
+    pub fn add_set_of_points_as_connected_lines(&mut self, p: Vec<Vector3<f64>>, color: Vector3<f64>){
         for i in 0..p.len()-1{
             self.addline(p[i], p[i+1],color);
         }
     }
-    fn adddot(&mut self, a: Vector3<f32>){
+    fn adddot(&mut self, a: Vector3<f64>){
         self.dots.push(a);
     }
 

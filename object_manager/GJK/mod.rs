@@ -1,19 +1,19 @@
 use nalgebra::Vector3;
 use rand::Rng;
 use super::object::Object;
-type V3 = Vector3<f32>;
+type V3 = Vector3<f64>;
 
 #[derive(Clone)]
 pub struct Collider {
     pub data: Vec<V3>,
 }
-fn clamp(x:f32,a:f32,b:f32)->f32{
-    f32::min(b,f32::max(a,x))
+fn clamp(x:f64,a:f64,b:f64)->f64{
+    f64::min(b,f64::max(a,x))
 }
 impl Collider {
     pub fn get_support(&self, dir: V3)-> V3{
         let mut out = V3::default();
-        let mut maxv = -std::f32::MAX;
+        let mut maxv = -std::f64::MAX;
         for p in self.data.iter(){
             let dist = p.dot(&dir);
             if dist > maxv {
@@ -273,7 +273,7 @@ impl Simplex {
 } 
 pub fn gjk(a:& Object, b:& Object)->bool{
     let mut rng = rand::thread_rng();
-    let mut rd= || {rng.gen_range(-1.0f32..1.0)};
+    let mut rd= || {rng.gen_range(-1.0f64..1.0)};
     let dir = V3::new(rd(),rd(),rd()).normalize();
     let mut sup = a.collider.get_cso_support(&b.collider, dir);
     let mut simp = Simplex::One(sup);

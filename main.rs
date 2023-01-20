@@ -8,7 +8,7 @@ fn main(){
     let a = std::time::Instant::now();
     //init cam
     let cam_pos = [0f32,0.,0.]; 
-    let cam_ori = Matrix3::<f32>::default();
+    let cam_ori = Matrix3::<f64>::default();
     
     //use glium::{glutin, Surface};
     let mut om = object_manager::ObjectManager::new();
@@ -53,9 +53,9 @@ fn main(){
         let ub_pos = glium::uniforms::UniformBuffer::new(&display,om.get_object_position()).unwrap();
         // println!("from main: {:?}", OM.getObjectOrientations()[0] );
         let ub_o = glium::uniforms::UniformBuffer::new(&display,om.get_object_orientations()).unwrap();
-        let debug_line_colors = glium::uniforms::UniformBuffer::new(&display,om.debug.getLineColors() ).unwrap();
+        let debug_line_colors = glium::uniforms::UniformBuffer::new(&display,om.debug.get_line_colors() ).unwrap();
         let ub_o_dim = glium::uniforms::UniformBuffer::new(&display,om.get_object_dims()).unwrap();
-        let current_time = std::time::Instant::now().duration_since(a).as_secs_f32();
+        let current_time = std::time::Instant::now().duration_since(a).as_secs_f64();
         let ws = display.get_framebuffer_dimensions(); 
         let uniforms = glium::uniform! {
             windowSizeX: ws.0,
@@ -82,7 +82,7 @@ fn main(){
         let next_frame_time = std::time::Instant::now() +
                 std::time::Duration::from_nanos(16_666_667);
         // println!("current time: {}", currentTime);
-        om.update(0.016666,current_time,(ws.0 as f32, ws.1 as f32));
+        om.update(0.016666,current_time,(ws.0 as f64, ws.1 as f64));
 
     
         // println!("line #: {:?}", OM.debug.lines[0]);
@@ -118,17 +118,17 @@ fn process_input(om: &mut object_manager::ObjectManager, event: &glutin::event::
         Some(key) => key,
         None => return,
     };
-    let speed = 5.5f32;
-    let aspeed = 3.5f32;
-    let forward =om.cam.1* Vector3::<f32>::new(0.,0.,1.);
-    let right =om.cam.1* Vector3::<f32>::new(1.,0.,0.);
+    let speed = 5.5f64;
+    let aspeed = 3.5f64;
+    let forward =om.cam.1* Vector3::<f64>::new(0.,0.,1.);
+    let right =om.cam.1* Vector3::<f64>::new(1.,0.,0.);
     match key {
         glutin::event::VirtualKeyCode::A => om.cam.0 -= right*speed*0.016666, 
         glutin::event::VirtualKeyCode::D => om.cam.0 += right*speed*0.016666, 
         glutin::event::VirtualKeyCode::W => om.cam.0 += forward*speed*0.016666, 
         glutin::event::VirtualKeyCode::S => om.cam.0 -= forward*speed*0.016666,  
-        glutin::event::VirtualKeyCode::Left => om.cam.1 *= nalgebra::UnitQuaternion::<f32>::new(Vector3::<f32>::new(0.,1.,0.)*-aspeed*0.016666), 
-        glutin::event::VirtualKeyCode::Right=> om.cam.1 *= nalgebra::UnitQuaternion::<f32>::new(Vector3::<f32>::new(0.,1.,0.)*aspeed*0.016666), 
+        glutin::event::VirtualKeyCode::Left => om.cam.1 *= nalgebra::UnitQuaternion::<f64>::new(Vector3::<f64>::new(0.,1.,0.)*-aspeed*0.016666), 
+        glutin::event::VirtualKeyCode::Right=> om.cam.1 *= nalgebra::UnitQuaternion::<f64>::new(Vector3::<f64>::new(0.,1.,0.)*aspeed*0.016666), 
         _ => (),
     };
 
@@ -156,7 +156,7 @@ glium::implement_vertex!(VertexLine,position, color);
 
 fn get_debug_program(display:& glium::Display, om: &mut object_manager::ObjectManager)->(glium::Program, glium::VertexBuffer<VertexLine>){
     let lines = om.debug.getlines(om.screen_dim,om.cam);
-    let linecolors = om.debug.getLineColors();
+    let linecolors = om.debug.get_line_colors();
     // println!("{:?}", linecolors);
     let mut debuglines: Vec<VertexLine> = vec![];
     let mut debug_index_data:Vec<u16> = vec![];
@@ -165,8 +165,8 @@ fn get_debug_program(display:& glium::Display, om: &mut object_manager::ObjectMa
     for i in 0..256{
         // debuglines.push(Vertex {position: [lines[i].0,(dim.1/dim.0)*lines[i].1]});  
         let j = i*4;
-        debuglines.push(VertexLine {position: [lines[j],lines[j+1]], color: [linecolors[i*3],linecolors[i*3+1],linecolors[i*3+2]]});  
-        debuglines.push(VertexLine {position: [lines[j+2],lines[j+3]], color: [linecolors[i*3],linecolors[i*3+1],linecolors[i*3+2]]});  
+        debuglines.push(VertexLine {position: [lines[j] as f32, lines[j+1] as f32], color: [linecolors[i*3] as f32,linecolors[i*3+1] as f32,linecolors[i*3+2] as f32]});  
+        debuglines.push(VertexLine {position: [lines[j+2] as f32,  lines[j+3] as f32], color: [linecolors[i*3] as f32,linecolors[i*3+1] as f32,linecolors[i*3+2] as f32]});  
         debug_index_data.push(i as u16);
     }
     let debug_vertex_buffer = glium::VertexBuffer::new(display, &debuglines).unwrap(); 
