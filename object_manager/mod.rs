@@ -24,22 +24,28 @@ impl ObjectManager {
         let o: Vec<Object> = vec![];
         let d = GraphicDebug{lines: vec![],line_colors: vec![], dots: vec![]};
         let mut om = ObjectManager{physics_manager: PhysicsManager::new(), objects: o,cam: (V3::new(0.,0.,-1.), UnitQuaternion::default()), debug: d, screen_dim: (0.,0.)};
-//        om.add_object(V3::new(1.0,0.,3.5),BasicShape::Cube([1.,3.,1.0]));
-        om.add_object(V3::new(0.0,0.,3.5),BasicShape::Cube([3.,1.2,0.2]));
+        om.add_object(V3::new(0.0,2.,4.5),BasicShape::Cube([1.,3.,1.]), true, 10., V3::new(1.,0.,0.));
+        om.add_object(V3::new(-2.0,0.,3.5),BasicShape::Cube([3.,1.2,0.2]), false ,1.5, V3::new(-1.,0.,0.));
         
         let desc = ConstraintDesc{
-            apoint: V3::new(0.5,1.5,0.5),
-            bpoint: V3::new(0.5,1.5,0.5),
-            compliance: 0.4,
+            apoint: V3::new(0.5,-1.5,0.5),
+            bpoint: V3::new(1.5,0.6,0.1),
+            compliance: 0.0001000,
             dist:  2., 
         };
-            
+        let desc2 = ConstraintDesc{
+            apoint: V3::new(-0.5,-1.5,-0.5),
+            bpoint: V3::new(1.5,-0.6,0.1),
+            compliance: 0.0000100,
+            dist:  2., 
+        };
         
         om.physics_manager.add_constraint(0, 1, desc);
+        om.physics_manager.add_constraint(0, 1, desc2);
         om
     }
-    pub fn add_object(&mut self,p: V3, s: BasicShape){ match s{
-            BasicShape::Cube(dim) => self.objects.push(Object::new(p, BasicShape::Cube(dim)) ),
+    pub fn add_object(&mut self, p: V3, s: BasicShape, bstatic: bool, d: f64, a: V3){ match s{
+            BasicShape::Cube(dim) => self.objects.push(Object::new(p, BasicShape::Cube(dim), bstatic, d,a) ),
             BasicShape::Pyramid => {},
             BasicShape::Sphere(r) => {} ,
         } 
@@ -51,9 +57,12 @@ impl ObjectManager {
         self.screen_dim = dim;
         self.debug.clear();
         self.physics_manager.update_physics(&mut self.objects, dt,ct);
-        self.add_debug_lines_for_cube(0, V3::new(1.,1.,0.)); 
-        self.add_debug_lines_for_cube(1,V3::new(1.,0.,1.)); 
 
+//        self.add_debug_lines_for_cube(0, V3::new(1.,1.,0.)); 
+//        self.add_debug_lines_for_cube(1,V3::new(1.,0.,1.)); 
+        
+        self.debug.debug_constraint(&self.physics_manager.constraints[0], &self.objects);
+        self.debug.debug_constraint(&self.physics_manager.constraints[1], &self.objects);
     }
     
 

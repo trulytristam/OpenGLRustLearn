@@ -1,5 +1,9 @@
 extern crate nalgebra;
 use nalgebra::*;
+use super::Constraint;
+use super::Object;
+type V3 = Vector3<f64>;
+
 pub struct GraphicDebug {
     pub lines: Vec<(Vector3<f64>,Vector3<f64>)>,
     pub line_colors: Vec<Vector3<f64>>,
@@ -39,7 +43,15 @@ impl GraphicDebug {
         }
         out
     }
+    pub fn debug_constraint(&mut self, c: &Constraint, objects: &Vec<Object>){
+        if c.a >= objects.len() as u32 || c.b >= objects.len() as u32 {return;} 
+        let loca = c.c_desc.apoint;
+        let locb = c.c_desc.bpoint;
+        
+        self.addline(objects[c.a as usize].localtoglobal(loca),objects[c.b as usize].localtoglobal(locb),V3::new(0.,1.,1.));
+    }
     pub fn get_line_colors(&self)->[f32;1024]{
+
         let mut out = [0.;1024];
         let mut i = 0;
         // /rintln!("{:?}", self.lineColors.len());

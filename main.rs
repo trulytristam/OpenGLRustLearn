@@ -19,7 +19,6 @@ fn main(){
         // Create a window
     let display = glium::Display::new(wb,cb,&event_loop).unwrap();
 
-
     let vertex_buffer = {
         glium::VertexBuffer::new(&display, 
             &[
